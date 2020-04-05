@@ -9,7 +9,6 @@ import * as mongoose from 'mongoose';
 const scopes = ['user-read-private', 'user-read-email','playlist-modify-public','playlist-modify-private', 'user-read-currently-playing'];
 
 const spotifyAuthState = 'maxma-spotify';
-const testId = 'maxma-web-spotify';
 
 const spotifyWebApi = new SpotifyWebApi({
   ...spotifyConfig
@@ -17,17 +16,19 @@ const spotifyWebApi = new SpotifyWebApi({
 
 export const spotifyWebService = {
 
-  createSpotifyAuthorizeURL: () => {
-    const spotifyLoginPage = spotifyWebApi.createAuthorizeURL(scopes, spotifyAuthState, true);
+  createSpotifyAuthorizeURL: (req: CustomRequest) => {
+    const userId = req.body.userId;
+    console.log(req.body)
+    const spotifyLoginPage = spotifyWebApi.createAuthorizeURL(scopes, userId ?? spotifyAuthState, true);
   
     return spotifyLoginPage;
   },
 
-  handleLoginCallback: async (code: string, req: CustomRequest) => {
+  handleLoginCallback: async ({ code, userId }: { code: string, userId: string }, req: CustomRequest) => {
     const ret = await spotifyWebApi.authorizationCodeGrant(code);
     const { access_token, refresh_token, expires_in } = ret.body;    
 
-    const id = req.payload?.lineProfile?.userId ?? testId;
+    const id = userId;
     const hasExistedSpotifyVerifyData = await LineSpotifyVerificationModel.findOne({ userId: id });
     if (!hasExistedSpotifyVerifyData) {
       const lineSpotifyVerifyData = new LineSpotifyVerificationModel();
@@ -39,11 +40,12 @@ export const spotifyWebService = {
       await LineSpotifyVerificationModel.create(lineSpotifyVerifyData);
     }
 
-    return true;
+    return {
+      expiredIn: expires_in
+    };
   },
 
-  getMyCurrentPlayingTrack: async (req: CustomRequest) => {
-    const id = req.payload?.lineProfile?.userId ?? testId;
+  getMyCurrentPlayingTrack: async (id: string) => {
     const lineSpotifyVerifyData = await LineSpotifyVerificationModel.findOne({ userId: id });
     spotifyWebApi.setAccessToken(lineSpotifyVerifyData.spotifyAccessToken);
     spotifyWebApi.setRefreshToken(lineSpotifyVerifyData.spotifyRefreshToken);
@@ -71,6 +73,9 @@ export const spotifyWebService = {
     try {
       const currentPlayingTrack = await spotifyWebApi.getMyCurrentPlayingTrack();
       const ret = currentPlayingTrack.body;
+      if (!ret.item) {
+        throw new Error('no playing song')
+      }
       const svc = await kkboxServices();
   
       const [singerName, songName] = [ret.item.artists?.[0].name ?? ret.item.album.name, ret.item.name]

@@ -13,7 +13,7 @@ export interface LineSpotifyVerificationSchema {
 interface LineSpotifyVerificationDocument extends mongoose.Document, LineSpotifyVerificationSchema {}
 
 const lineProfileSchema = new mongoose.Schema<LineSpotifyVerificationSchema>({
-  userId: { type: [String], index: true },
+  userId: { type: String, index: true },
   spotifyAccessToken: String,
   spotifyRefreshToken: String,
   expiredAt:{ type: Date, default: Date.now },

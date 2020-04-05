@@ -9,9 +9,11 @@
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "allowSyntheticDefaultImports": true,
+        "allowJs": true
     },
     "include": [
-        "./src/**/*"
+        "./src/**/*",
+        "./index.js", "bottender.config.js"
     ],
     "exclude": [
         "node_modules"
